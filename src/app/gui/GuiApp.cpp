@@ -2639,7 +2639,7 @@ bool GuiApp::add_sources(const std::vector<std::string>& paths, bool replace) {
     if (!inputs.empty()) mark_source_metadata_dirty();
     if (_sources.empty()) return false;
     // What was just added is what the user wants to look at.
-    if (first_new < _sources.size()) select_source(_sources[first_new].path, false);
+    if (first_new < _sources.size()) select_source((int)first_new, false);
     apply_capture_defaults(_sources, _sfm_job, _colmap_job);
     reapply_dataset_builtin();
     if (_mask_preview_input >= (int)_sources.size()) _mask_preview_input = 0;
@@ -4999,11 +4999,11 @@ void GuiApp::draw_dataset_source() {
         PrepInput& s = _sources[i];
         ImGui::PushID((int)i);
         const float row_y = ImGui::GetCursorScreenPos().y;
-        if (row_select_begin(_source_row_h[i], (int)i == selected)) select_source(s.path, false);
+        if (row_select_begin(_source_row_h[i], (int)i == selected)) select_source((int)i, false);
         ImGui::SetNextItemWidth(path_w);
         std::string& path_edit = _source_path_edits[i];
         ui::InputTextRaw("##in", &path_edit);
-        if (ImGui::IsItemActivated()) select_source(s.path, false);
+        if (ImGui::IsItemActivated()) select_source((int)i, false);
         const float path_right = ImGui::GetItemRectMax().x;
         // A typed path is only worth resolving once it is finished -- rewriting
         // `<folder>` to `<folder>/images` under the cursor is not helpful.
@@ -6791,14 +6791,40 @@ int draw_view_tabs(const Msg* const* names, const bool* avail, const int* order,
 // The input preview (SourcePreview.h)
 // ---------------------------------------------------------------------------
 
-void GuiApp::select_source(const std::string& path, bool scan) {
-    _source_sel = path;
+void GuiApp::select_source(int input, bool scan) {
+    // Which copy of its path the row is: how many rows above it share it. A
+    // clip imported twice is two inputs, and each must be selectable on its own.
     _source_sel_scan = scan;
+    int copy = 0;
+    const std::string* path = nullptr;
+    if (scan) {
+        if (input >= 0 && input < (int)_lidar.size()) {
+            for (int k = 0; k < input; k++)
+                if (_lidar[(size_t)k].path == _lidar[(size_t)input].path) copy++;
+            path = &_lidar[(size_t)input].path;
+        }
+    } else {
+        if (input >= 0 && input < (int)_sources.size()) {
+            for (int k = 0; k < input; k++)
+                if (_sources[(size_t)k].path == _sources[(size_t)input].path) copy++;
+            path = &_sources[(size_t)input].path;
+        }
+    }
+    // No such row: nothing in that list is selected.
+    _source_sel_copy = copy;
+    _source_sel = path ? *path : std::string();
     _right_input = true;
 }
 
 int GuiApp::selected_source() const {
     if (_source_sel_scan) return -1;
+    int copy = 0;
+    for (size_t i = 0; i < _sources.size(); i++) {
+        if (_sources[i].path != _source_sel) continue;
+        if (copy == _source_sel_copy) return (int)i;
+        copy++;
+    }
+    // The row went away: the file's first remaining row keeps it.
     for (size_t i = 0; i < _sources.size(); i++)
         if (_sources[i].path == _source_sel) return (int)i;
     return -1;
@@ -6806,6 +6832,12 @@ int GuiApp::selected_source() const {
 
 int GuiApp::selected_scan() const {
     if (!_source_sel_scan) return -1;
+    int copy = 0;
+    for (size_t i = 0; i < _lidar.size(); i++) {
+        if (_lidar[i].path != _source_sel) continue;
+        if (copy == _source_sel_copy) return (int)i;
+        copy++;
+    }
     for (size_t i = 0; i < _lidar.size(); i++)
         if (_lidar[i].path == _source_sel) return (int)i;
     return -1;

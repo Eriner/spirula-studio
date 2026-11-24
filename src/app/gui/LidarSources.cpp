@@ -116,7 +116,7 @@ void GuiApp::add_lidar_sources(const std::vector<std::string>& paths) {
                          [&](const LidarInput& l) { return l.path == in.path; }))
             _lidar.push_back(std::move(in));
     }
-    if (first_new < _lidar.size()) select_source(_lidar[first_new].path, true);
+    if (first_new < _lidar.size()) select_source((int)first_new, true);
     refresh_sources();
 }
 
@@ -195,10 +195,10 @@ void GuiApp::draw_lidar_rows(float path_w, bool one_line) {
         ImGui::PushID((int)i);
         const float row_y = ImGui::GetCursorScreenPos().y;
         if (row_select_begin(_lidar_row_h[i], (int)i == selected))
-            select_source(_lidar[i].path, true);
+            select_source((int)i, true);
         ImGui::SetNextItemWidth(path_w);
         ui::InputTextRaw("##in", &_lidar[i].edit);
-        if (ImGui::IsItemActivated()) select_source(_lidar[i].path, true);
+        if (ImGui::IsItemActivated()) select_source((int)i, true);
         if (ImGui::IsItemDeactivatedAfterEdit() && _lidar[i].edit != _lidar[i].path)
             replace_lidar_source(i, _lidar[i].edit);
         ImGui::SameLine();

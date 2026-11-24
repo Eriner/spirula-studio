@@ -982,10 +982,11 @@ private:
     // path, so re-choosing a file already read costs nothing.
     TelemetryProbe _telemetry;
     // The input the right-hand column previews: a row of _sources, or of
-    // _lidar when `_source_sel_scan`. Kept by path, so a row removed or moved
-    // above it does not move the selection onto another file.
+    // _lidar when `_source_sel_scan`. Kept by path so a removed or moved row
+    // does not move it onto another file; `_source_sel_copy` picks between rows on one path.
     SourcePreview _source_view;
     std::string _source_sel;
+    int _source_sel_copy = 0;   // which of the rows sharing that path
     bool _source_sel_scan = false;
     // Whether that column shows the input or the run, when there is both.
     bool _right_input = true;
@@ -995,7 +996,7 @@ private:
     std::string _ffmpeg_checked;
     bool _ffmpeg_found = false;
     bool _source_gpu_asked = false;   // a video preview froze the device, or tried to
-    void select_source(const std::string& path, bool scan);
+    void select_source(int input, bool scan);
     // -1 when nothing is selected, or the selection names no row.
     int selected_source() const;
     int selected_scan() const;
